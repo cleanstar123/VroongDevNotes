@@ -85,16 +85,51 @@ await clearChromeMemory(session.page);
 
 동일 조건 확인 결과 (2026-04-26 기준):
 
-| 항목 | dev | prod | 배율 |
+| 항목 | dev | prod | 비고 |
 |---|---|---|---|
-| 협력사(센터) 수 | 63개 | 63개 | 1x |
-| partner_details_if | 63건 | 63건 | 1x |
+| 협력사(센터) 수 | 63개 | 63개 | 동일 |
+| partner_details_if | 63건 | 63건 | 동일 |
 | rider_delivery_histories_if | 1,372건 | 2,866건 | 2x |
 | **partner_delivery_fees_if** | **14,977건** | **32,174건** | **2.15x** |
 
-`partner_delivery_fees_if` 가 가장 큰 차이. 이 데이터는 `partnerDeliveryFeeTrigger`(9시, 10시)가 센터별 **Excel 파일을 다운로드**하여 저장한 결과임.
+**실측 메모리 패턴 비교 (09:00 배치 기준)**
 
-**원인 A — Excel 파일 base64 변환의 O(n²) 특성**
+| 시각 | dev | prod |
+|---|---|---|
+| 08:55 | 39.0% | 63.4% |
+| 09:00 | 41.2% | 68.75% |
+| 09:05 | 40.0% | 65.5% |
+| 09:10 | 39.2% | 69.2% |
+| 09:15 | 39.0% | 69.5% |
+| 09:25 | — | 68.1% |
+
+dev는 배치 후 완전 회복. prod는 스파이크 후 기저선으로 돌아오지 않고 계속 우상향.
+
+---
+
+**원인 A — prod 전용 페이지 재시작 로직이 역효과**
+
+dev 브랜치에는 `restartSessionPage`, `recycleSessionPageIfNeeded` 코드가 없음. 페이지는 로그인 이후 세션 종료 시까지 한 번만 생성됨.
+
+prod 브랜치에는 50요청마다 `recycleSessionPageIfNeeded`가 실행:
+
+```
+1. 기존 페이지 닫기  → V8 힙 해제 ✅
+2. 새 페이지 생성    → blank
+3. deliverycenter.baemin.com/center/change 로 navigate
+   → 배민 SPA (React 앱, JS 번들, CSS) 전체 로드  ⚠️
+```
+
+`--aggressive-cache-discard` 플래그로 캐시가 비활성화되어 있어, 매 페이지 재시작마다 배민 SPA 자산을 새로 다운로드함. 배치 사이 "유휴 상태"에도 항상 갓 로드된 SPA가 Chrome 렌더러 메모리를 점유 → 메모리가 회복되지 않음.
+
+dev는 페이지 재시작 없음 → 배치 후 Chrome이 유휴 GC를 실행 → 메모리 회복.
+
+```
+dev  → 페이지 재시작 없음 → 배치 후 유휴 GC → 메모리 회복
+prod → 50요청마다 SPA 재로드 → 렌더러 메모리 계속 점유 → 메모리 우상향
+```
+
+**원인 B — Excel 파일 base64 변환의 O(n²) 특성 (9시, 10시 한정)**
 
 `directApiCallForFile` 함수 내부에서 Excel ArrayBuffer를 base64로 변환할 때 문자열 연결 방식 사용:
 
@@ -107,33 +142,13 @@ for (let i = 0; i < bytes.length; i++) {
 const base64 = btoa(binary);
 ```
 
-파일 크기가 2배면 V8 힙 사용량은 약 4배 증가 (O(n²)):
+prod Excel 파일이 dev보다 2.15배 크므로 V8 힙 사용량은 약 4배(2² = 4) 증가.
+63개 센터 × 2회(9시, 10시) = 126회 발생 → 9시, 10시 스파이크에 기여.
 
-```
-dev  : 센터당 ~238행 Excel → V8 힙 사용 1단위
-prod : 센터당 ~511행 Excel → V8 힙 사용 약 4단위 (2² = 4배)
-```
-
-63개 센터 × 2회(9시, 10시) = 매일 126회 발생. 9시, 10시 메모리 스파이크의 직접 원인.
-
-**원인 B — prod 코드에만 존재했던 메모리 누수**
-
-dev는 구버전 브랜치로 prod에 추가된 기능들이 없음.
-prod에만 있는 코드 중 확인된 누수:
+**원인 C — prod 코드에만 존재했던 메모리 누수**
 
 - `waitForSessionReady` 타이머 누수 — 매 API 호출마다 15초 타이머 미해제 → 누적 (수정 완료)
 - `sessionNavTimeoutCount` Map — prod에만 추가된 코드로 세션 타임아웃 카운트 누적
-
-**원인 C — Chrome RSS 반환 특성**
-
-Chrome GC는 JS 객체를 해제하지만 프로세스가 OS에 메모리(RSS)를 즉시 반환하지 않음.
-dev는 파일 크기가 절반이라 Chrome footprint가 기본 범위 내 유지.
-prod는 더 큰 파일 + 누수 코드로 인해 footprint가 점진적으로 확장.
-
-```
-dev  → Excel 파일 절반 크기 + 누수 코드 없음 → Chrome RSS 안정적
-prod → Excel 파일 2배 크기 + 누수 코드 있음 → Chrome RSS 우상향 → OOM
-```
 
 ---
 
@@ -172,9 +187,10 @@ try {
 '--metrics-recording-only', '--mute-audio',
 ```
 
-#### 조치 3 — 페이지 주기적 재생성 (SESSION_PAGE_RECYCLE_REQUESTS=50) (배포 완료)
+#### 조치 3 — 페이지 주기적 재생성 비활성화 (SESSION_PAGE_RECYCLE_REQUESTS=0)
 
-50회 요청마다 Chrome 페이지를 닫고 새로 생성. 쿠키/세션은 Incognito Context에 보존되어 재로그인 불필요.
+기존 50요청마다 페이지를 재시작하는 로직이 배민 SPA를 반복 로드하여 오히려 메모리를 증가시키는 역효과 확인.
+`CHROME_GC_INTERVAL_REQUESTS=10`(조치 4)이 V8 힙을 직접 처리하므로 페이지 재시작 불필요 → 비활성화.
 
 #### 조치 4 — 요청 사이 간격 CDP GC 실행
 
@@ -213,7 +229,8 @@ const CHROME_MEMORY_CLEANUP_INTERVAL = 3 * 60 * 1000;   // 3분
 |---|---|---|
 | 매시 :10분 스파이크 | V8 힙 급등 | 10요청마다 GC로 억제 |
 | 14시 OOM Kill | 매일 발생 | 스파이크 감소로 임계점 도달 방지 |
-| 유휴 시 메모리 회복 | 20분 후 | 3분 후 |
+| 배치 후 메모리 회복 | 회복 안 됨 (SPA 재로드로 점유) | 페이지 재시작 없음 → 유휴 GC로 회복 |
+| 유휴 시 메모리 회복 속도 | 20분 후 | 3분 후 |
 | 배치 완료 시간 | 변화 없음 | +1.5초 (0.6%) |
 
 ---
@@ -241,4 +258,4 @@ const CHROME_MEMORY_CLEANUP_INTERVAL = 3 * 60 * 1000;   // 3분
 | `relay-server/services/browser/core.js` | GC 관련 모든 수정 |
 | `relay-server/services/baemin/fast-api.js` | 세션 만료 플래그 관리 |
 | `relay-server/server.js` | sessionNavTimeoutCount 정리, keep-alive 로직 |
-| `.aws/update-relay-env.js` | 환경변수 자동 등록 스크립트 |
+| `.aws/update-relay-env.js` | 환경변수 자동 등록 스크립트 (SESSION_PAGE_RECYCLE_REQUESTS=0 추가) |
