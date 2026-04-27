@@ -83,13 +83,57 @@ await clearChromeMemory(session.page);
 
 ### 3. 추가 확인: dev vs prod 차이
 
-| 항목               | dev 브랜치 | prod 브랜치            |
-| ---------------- | ------- | ------------------- |
-| 메모리 추이           | 일정하게 유지 | 지속 우상향              |
-| 크롤링 배치 요청        | 거의 없음   | api-server 배치 지속 유입 |
-| riderInfoTrigger | 매시 실행   | 매시 실행               |
+동일 조건 확인 결과 (2026-04-26 기준):
 
-dev 브랜치는 코드 차이가 아니라 **배치 부하가 없어서** 메모리가 안정적.
+| 항목 | dev | prod | 배율 |
+|---|---|---|---|
+| 협력사(센터) 수 | 63개 | 63개 | 1x |
+| partner_details_if | 63건 | 63건 | 1x |
+| rider_delivery_histories_if | 1,372건 | 2,866건 | 2x |
+| **partner_delivery_fees_if** | **14,977건** | **32,174건** | **2.15x** |
+
+`partner_delivery_fees_if` 가 가장 큰 차이. 이 데이터는 `partnerDeliveryFeeTrigger`(9시, 10시)가 센터별 **Excel 파일을 다운로드**하여 저장한 결과임.
+
+**원인 A — Excel 파일 base64 변환의 O(n²) 특성**
+
+`directApiCallForFile` 함수 내부에서 Excel ArrayBuffer를 base64로 변환할 때 문자열 연결 방식 사용:
+
+```js
+// fast-api.js — directApiCallForFile 내부 (Chrome V8 안에서 실행)
+let binary = '';
+for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);  // ← O(n²) 문자열 연결
+}
+const base64 = btoa(binary);
+```
+
+파일 크기가 2배면 V8 힙 사용량은 약 4배 증가 (O(n²)):
+
+```
+dev  : 센터당 ~238행 Excel → V8 힙 사용 1단위
+prod : 센터당 ~511행 Excel → V8 힙 사용 약 4단위 (2² = 4배)
+```
+
+63개 센터 × 2회(9시, 10시) = 매일 126회 발생. 9시, 10시 메모리 스파이크의 직접 원인.
+
+**원인 B — prod 코드에만 존재했던 메모리 누수**
+
+dev는 구버전 브랜치로 prod에 추가된 기능들이 없음.
+prod에만 있는 코드 중 확인된 누수:
+
+- `waitForSessionReady` 타이머 누수 — 매 API 호출마다 15초 타이머 미해제 → 누적 (수정 완료)
+- `sessionNavTimeoutCount` Map — prod에만 추가된 코드로 세션 타임아웃 카운트 누적
+
+**원인 C — Chrome RSS 반환 특성**
+
+Chrome GC는 JS 객체를 해제하지만 프로세스가 OS에 메모리(RSS)를 즉시 반환하지 않음.
+dev는 파일 크기가 절반이라 Chrome footprint가 기본 범위 내 유지.
+prod는 더 큰 파일 + 누수 코드로 인해 footprint가 점진적으로 확장.
+
+```
+dev  → Excel 파일 절반 크기 + 누수 코드 없음 → Chrome RSS 안정적
+prod → Excel 파일 2배 크기 + 누수 코드 있음 → Chrome RSS 우상향 → OOM
+```
 
 ---
 
