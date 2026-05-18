@@ -70,9 +70,9 @@ for (RiderDeliveryHistoriesNowIfEntity riderHistory : deduplicated) {
 
 #### 추가 원인 — 불필요한 외부 트랜잭션들
 
-| 메서드 | 문제 |
-|---|---|
-| `migrateTable` (L.96) | `@Transactional(REQUIRES_NEW)` — 직접 DB 작업 없이 커넥션만 점유 |
+| 메서드                             | 문제                                                     |
+| ------------------------------- | ------------------------------------------------------ |
+| `migrateTable` (L.96)           | `@Transactional(REQUIRES_NEW)` — 직접 DB 작업 없이 커넥션만 점유   |
 | `processTableMigration` (L.166) | `@Transactional(REQUIRES_NEW)` — switch 분기만 하면서 커넥션 점유 |
 
 #### 추가 원인 — 헬스체크가 DB 커넥션에 의존
