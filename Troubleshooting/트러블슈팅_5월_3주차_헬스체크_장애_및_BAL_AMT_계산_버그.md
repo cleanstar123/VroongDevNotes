@@ -300,10 +300,10 @@ public BaeminToVroongIfResult.TableMigrationResult migrateVrRiderAcctDaily(...)
 
 ### 수정 후 리스크
 
-| 항목 | 내용 | 대응 |
-|---|---|---|
+| 항목                  | 내용                                      | 대응                                                                |
+| ------------------- | --------------------------------------- | ----------------------------------------------------------------- |
 | Non-Repeatable Read | 같은 트랜잭션 내에서 동일 쿼리를 두 번 실행하면 결과가 다를 수 있음 | `migrateVrRiderAcctDaily`는 previousBalance를 단 1회 조회 후 계산하므로 영향 없음 |
-| Phantom Read | 범위 쿼리 결과가 달라질 수 있음 | 해당 메서드는 단건 조회 위주이므로 영향 없음 |
+| Phantom Read        | 범위 쿼리 결과가 달라질 수 있음                      | 해당 메서드는 단건 조회 위주이므로 영향 없음                                         |
 
 ### 수정 확인 방법
 
