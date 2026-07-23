@@ -79,7 +79,22 @@
 | 확인 방법 | ECS → 클러스터 → 태스크 → 로그 탭 |
 | 확인 위치 | CloudWatch 로그 |
 | 기대 결과 | `HikariPool-1 - Start completed` |
-| 결과 | ⬜ |
+| 결과 | ✅ 정상 (2026-07-23 11:24) |
+
+**확인된 항목 (2026-07-23 11:24 기동 로그 기준):**
+- `HikariPool-1 - Start completed` ✅
+- `Database version: 8.4.8` ✅
+- `Found 41 JPA repository interfaces` ✅ (신규 미션 레포지토리 포함)
+- `using meta data indicating: MYSQL` (Spring Batch) ✅
+- `중계 서버 활성화: http://relay-dev.test:8090` ✅
+- `Started VroongApiApplication in 96.019 seconds` ✅
+- 기동 로그 내 ERROR 없음 ✅
+
+> **확인 필요**: 기동 로그 DB URL이 `vraccountdev`로 연결됨. 운영 스냅샷 데이터(`vraccount`)와 동일한 데이터인지 DBeaver에서 확인 권장
+> ```sql
+> SHOW DATABASES; -- vraccount / vraccountdev 둘 다 있는지 확인
+> SELECT COUNT(*) FROM vr_rider_info; -- 운영 데이터 존재 여부 확인
+> ```
 
 ### TC-D-002. API 정상 응답
 
@@ -105,27 +120,27 @@ LIMIT 50;
 -- EXIT_CODE = 'COMPLETED' 이어야 함, 'FAILED' 없어야 함
 ```
 
-| TC | 배치명 | 실행 주기 | 우선순위 | 결과 |
-|----|--------|----------|---------|------|
-| TC-D-003-01 | `hectoDepositProcessJob` | 매분 | ★ 최우선 | ⬜ |
-| TC-D-003-02 | `batchWithdrawalJob` | 매일 00:05 | ★ 최우선 | ⬜ |
-| TC-D-003-03 | `balanceSnapshotJob` | 매일 00:00 | ★ 최우선 | ⬜ |
-| TC-D-003-04 | `riderInfoJob` | 매시 :00 | ★ 높음 | ⬜ |
-| TC-D-003-05 | `riderInfoIfJob` | 매시 :30 | ★ 높음 | ⬜ |
-| TC-D-003-06 | `riderDeliveryHistoriesNowJob` | 3~10분 간격 | ★ 높음 | ⬜ |
-| TC-D-003-07 | `riderDeliveryHistoriesNowIfJob` | 3~10분 간격 | ★ 높음 | ⬜ |
-| TC-D-003-08 | `missionCrawlJob` | 매 :02/:22/:42 | ★ 높음 (신규) | ⬜ |
-| TC-D-003-09 | `missionRiderProgressCrawlJob` | 매 :04/:24/:44 | ★ 높음 (신규) | ⬜ |
-| TC-D-003-10 | `baeminCenterMissionIfJob` | 매 :07/:27/:47 | ★ 높음 (신규) | ⬜ |
-| TC-D-003-11 | `baeminRiderMissionProgressIfJob` | 매 :09/:29/:49 | ★ 높음 (신규) | ⬜ |
-| TC-D-003-12 | `partnerDetailJob` | 매일 14:00 | 보통 | ⬜ |
-| TC-D-003-13 | `partnerDeliveryFeeJob` | 매일 09:00, 10:00 | 보통 | ⬜ |
-| TC-D-003-14 | `partnerDetailsIfJob` | 매시 :05 | 보통 | ⬜ |
-| TC-D-003-15 | `partnerDeliveryFeesIfJob` | 매시 :05 | 보통 | ⬜ |
-| TC-D-003-16 | `deliveryDailyHistoriesJob` | 매일 09:00, 10:00 | 보통 | ⬜ |
-| TC-D-003-17 | `riderDeliveryHistoriesJob` | 매일 09:00, 10:00 | 보통 | ⬜ |
-| TC-D-003-18 | `riderDeliveryHistoriesIfJob` | 매시 :05 | 보통 | ⬜ |
-| TC-D-003-19 | `deleteOldDataJob` | 매시 :00 | 낮음 | ⬜ |
+| TC          | 배치명                               | 실행 주기           | 우선순위      | 결과  |
+| ----------- | --------------------------------- | --------------- | --------- | --- |
+| TC-D-003-01 | `hectoDepositProcessJob`          | 매분              | ★ 최우선     | ⬜   |
+| TC-D-003-02 | `batchWithdrawalJob`              | 매일 00:05        | ★ 최우선     | ⬜   |
+| TC-D-003-03 | `balanceSnapshotJob`              | 매일 00:00        | ★ 최우선     | ⬜   |
+| TC-D-003-04 | `riderInfoJob`                    | 매시 :00          | ★ 높음      | ⬜   |
+| TC-D-003-05 | `riderInfoIfJob`                  | 매시 :30          | ★ 높음      | ⬜   |
+| TC-D-003-06 | `riderDeliveryHistoriesNowJob`    | 3~10분 간격        | ★ 높음      | ⬜   |
+| TC-D-003-07 | `riderDeliveryHistoriesNowIfJob`  | 3~10분 간격        | ★ 높음      | ⬜   |
+| TC-D-003-08 | `missionCrawlJob`                 | 매 :02/:22/:42   | ★ 높음 (신규) | ⬜   |
+| TC-D-003-09 | `missionRiderProgressCrawlJob`    | 매 :04/:24/:44   | ★ 높음 (신규) | ⬜   |
+| TC-D-003-10 | `baeminCenterMissionIfJob`        | 매 :07/:27/:47   | ★ 높음 (신규) | ⬜   |
+| TC-D-003-11 | `baeminRiderMissionProgressIfJob` | 매 :09/:29/:49   | ★ 높음 (신규) | ⬜   |
+| TC-D-003-12 | `partnerDetailJob`                | 매일 14:00        | 보통        | ⬜   |
+| TC-D-003-13 | `partnerDeliveryFeeJob`           | 매일 09:00, 10:00 | 보통        | ⬜   |
+| TC-D-003-14 | `partnerDetailsIfJob`             | 매시 :05          | 보통        | ⬜   |
+| TC-D-003-15 | `partnerDeliveryFeesIfJob`        | 매시 :05          | 보통        | ⬜   |
+| TC-D-003-16 | `deliveryDailyHistoriesJob`       | 매일 09:00, 10:00 | 보통        | ⬜   |
+| TC-D-003-17 | `riderDeliveryHistoriesJob`       | 매일 09:00, 10:00 | 보통        | ⬜   |
+| TC-D-003-18 | `riderDeliveryHistoriesIfJob`     | 매시 :05          | 보통        | ⬜   |
+| TC-D-003-19 | `deleteOldDataJob`                | 매시 :00          | 낮음        | ⬜   |
 
 ### TC-D-004. 이관 배치 transfer_yn 업데이트 검증
 
@@ -151,12 +166,12 @@ SELECT COUNT(*) FROM vr_baemin_center_mission;
 SELECT COUNT(*) FROM vr_baemin_rider_mission_progress;
 ```
 
-| 항목 | 기대 결과 | 결과 |
-|------|----------|------|
-| `baemin_center_mission_if` transfer_yn='Y' 존재 | Y 건수 > 0 | ⬜ |
-| `baemin_rider_mission_progress_if` transfer_yn='Y' 존재 | Y 건수 > 0 | ⬜ |
-| `vr_baemin_center_mission` 데이터 증가 | 전일 대비 동일 또는 증가 | ⬜ |
-| `vr_baemin_rider_mission_progress` 데이터 증가 | 전일 대비 동일 또는 증가 | ⬜ |
+| 항목                                                    | 기대 결과          | 결과  |
+| ----------------------------------------------------- | -------------- | --- |
+| `baemin_center_mission_if` transfer_yn='Y' 존재         | Y 건수 > 0       | ✅   |
+| `baemin_rider_mission_progress_if` transfer_yn='Y' 존재 | Y 건수 > 0       | ✅   |
+| `vr_baemin_center_mission` 데이터 증가                     | 전일 대비 동일 또는 증가 | ✅   |
+| `vr_baemin_rider_mission_progress` 데이터 증가             | 전일 대비 동일 또는 증가 | ✅   |
 
 ### TC-D-005. DB 연결 안정성 (수일간 모니터링)
 
