@@ -120,27 +120,29 @@ LIMIT 50;
 -- EXIT_CODE = 'COMPLETED' 이어야 함, 'FAILED' 없어야 함
 ```
 
-| TC          | 배치명                               | 실행 주기           | 우선순위      | 결과  |
-| ----------- | --------------------------------- | --------------- | --------- | --- |
-| TC-D-003-01 | `hectoDepositProcessJob`          | 매분              | ★ 최우선     | ⬜   |
-| TC-D-003-02 | `batchWithdrawalJob`              | 매일 00:05        | ★ 최우선     | ⬜   |
-| TC-D-003-03 | `balanceSnapshotJob`              | 매일 00:00        | ★ 최우선     | ⬜   |
-| TC-D-003-04 | `riderInfoJob`                    | 매시 :00          | ★ 높음      | ⬜   |
-| TC-D-003-05 | `riderInfoIfJob`                  | 매시 :30          | ★ 높음      | ⬜   |
-| TC-D-003-06 | `riderDeliveryHistoriesNowJob`    | 3~10분 간격        | ★ 높음      | ⬜   |
-| TC-D-003-07 | `riderDeliveryHistoriesNowIfJob`  | 3~10분 간격        | ★ 높음      | ⬜   |
-| TC-D-003-08 | `missionCrawlJob`                 | 매 :02/:22/:42   | ★ 높음 (신규) | ⬜   |
-| TC-D-003-09 | `missionRiderProgressCrawlJob`    | 매 :04/:24/:44   | ★ 높음 (신규) | ⬜   |
-| TC-D-003-10 | `baeminCenterMissionIfJob`        | 매 :07/:27/:47   | ★ 높음 (신규) | ⬜   |
-| TC-D-003-11 | `baeminRiderMissionProgressIfJob` | 매 :09/:29/:49   | ★ 높음 (신규) | ⬜   |
-| TC-D-003-12 | `partnerDetailJob`                | 매일 14:00        | 보통        | ⬜   |
-| TC-D-003-13 | `partnerDeliveryFeeJob`           | 매일 09:00, 10:00 | 보통        | ⬜   |
-| TC-D-003-14 | `partnerDetailsIfJob`             | 매시 :05          | 보통        | ⬜   |
-| TC-D-003-15 | `partnerDeliveryFeesIfJob`        | 매시 :05          | 보통        | ⬜   |
-| TC-D-003-16 | `deliveryDailyHistoriesJob`       | 매일 09:00, 10:00 | 보통        | ⬜   |
-| TC-D-003-17 | `riderDeliveryHistoriesJob`       | 매일 09:00, 10:00 | 보통        | ⬜   |
-| TC-D-003-18 | `riderDeliveryHistoriesIfJob`     | 매시 :05          | 보통        | ⬜   |
-| TC-D-003-19 | `deleteOldDataJob`                | 매시 :00          | 낮음        | ⬜   |
+| TC          | 배치명                               | 실행 주기           | 우선순위      | 결과                                       |
+| ----------- | --------------------------------- | --------------- | --------- | ---------------------------------------- |
+| TC-D-003-01 | `hectoDepositProcessJob`          | 매분              | ★ 최우선     | ✅ processedCount: 0 (입금 건 없음, 정상)        |
+| TC-D-003-02 | `batchWithdrawalJob`              | 매일 00:05        | ★ 최우선     | ⬜ 운영 전환 당일 스케줄 실행으로 검증                   |
+| TC-D-003-03 | `balanceSnapshotJob`              | 매일 00:00        | ★ 최우선     | ⬜ 운영 전환 당일 스케줄 실행으로 검증                   |
+| TC-D-003-04 | `riderInfoJob`                    | 매시 :00          | ★ 높음      | ✅ total: 2,282 (2026-07-23)              |
+| TC-D-003-05 | `riderInfoIfJob`                  | 매시 :30          | ★ 높음      | ✅ migratedCount: 0 (미이관 데이터 없음, 정상)      |
+| TC-D-003-06 | `riderDeliveryHistoriesNowJob`    | 3~10분 간격        | ★ 높음      | ✅ dev 스케줄 실행으로 기확인 (2026-07-23)          |
+| TC-D-003-07 | `riderDeliveryHistoriesNowIfJob`  | 3~10분 간격        | ★ 높음      | ✅ dev 스케줄 실행으로 기확인 (2026-07-23)          |
+| TC-D-003-08 | `missionCrawlJob`                 | 매 :02/:22/:42   | ★ 높음 (신규) | ✅ dev 스케줄 실행으로 기확인 (2026-07-23)          |
+| TC-D-003-09 | `missionRiderProgressCrawlJob`    | 매 :04/:24/:44   | ★ 높음 (신규) | ✅ dev 스케줄 실행으로 기확인 (2026-07-23)          |
+| TC-D-003-10 | `baeminCenterMissionIfJob`        | 매 :07/:27/:47   | ★ 높음 (신규) | ✅ dev 스케줄 실행으로 기확인 (2026-07-23)          |
+| TC-D-003-11 | `baeminRiderMissionProgressIfJob` | 매 :09/:29/:49   | ★ 높음 (신규) | ✅ dev 스케줄 실행으로 기확인 (2026-07-23)          |
+| TC-D-003-12 | `partnerDetailJob`                | 매일 14:00        | 보통        | ✅ 파트너 상세 정보 반환 (2026-07-23)              |
+| TC-D-003-13 | `partnerDeliveryFeeJob`           | 매일 09:00, 10:00 | 보통        | ✅ totalCount: 11,661 (2026-07-23)        |
+| TC-D-003-14 | `partnerDetailsIfJob`             | 매시 :05          | 보통        | ✅ migratedCount: 83 (2026-07-23)         |
+| TC-D-003-15 | `partnerDeliveryFeesIfJob`        | 매시 :05          | 보통        | ✅ migratedCount: 11,661 (2026-07-23)     |
+| TC-D-003-16 | `deliveryDailyHistoriesJob`       | 매일 09:00, 10:00 | 보통        | ✅ total: 21, 배달 통계 정상 반환 (2026-07-23)    |
+| TC-D-003-17 | `riderDeliveryHistoriesJob`       | 매일 09:00, 10:00 | 보통        | ✅ total: 1,392 (2026-07-23)              |
+| TC-D-003-18 | `riderDeliveryHistoriesIfJob`     | 매시 :05          | 보통        | ✅ migratedCount: 0 (미이관 데이터 없음, 정상)      |
+| TC-D-003-19 | `deleteOldDataJob`                | 매시 :00          | 낮음        | ✅ 8개 테이블 430,483건 스마트 삭제 완료 (2026-07-23) |
+
+> TC-D-003-02, 03 (`batchWithdrawalJob`, `balanceSnapshotJob`): 금융 처리 배치로 직접 호출 금지. 운영 전환 당일(7/28) 새벽 스케줄 실행 후 CloudWatch 로그로 검증.
 
 ### TC-D-004. 이관 배치 transfer_yn 업데이트 검증
 
@@ -175,11 +177,15 @@ SELECT COUNT(*) FROM vr_baemin_rider_mission_progress;
 
 ### TC-D-005. DB 연결 안정성 (수일간 모니터링)
 
+> 모니터링 시작: 2026-07-23 11:24 / 모니터링 종료 목표: 2026-07-27
+
 | 항목 | 확인 방법 | 기대 결과 | 결과 |
 |------|----------|----------|------|
-| ConnectionException 없음 | CloudWatch 로그 검색 `ConnectionException` | 미탐지 | ⬜ |
-| HikariPool 재연결 오류 없음 | CloudWatch 로그 검색 `HikariPool` + `ERROR` | 미탐지 | ⬜ |
-| ECS 태스크 비정상 종료 없음 | ECS → 서비스 → 이벤트 탭 | RUNNING 유지 | ⬜ |
+| ConnectionException 없음 | CloudWatch 로그 검색 `ConnectionException` | 미탐지 | ✅ 2026-07-23 기동 이후 미탐지 |
+| HikariPool 재연결 오류 없음 | CloudWatch 로그 검색 `HikariPool` + `ERROR` | 미탐지 | ✅ 2026-07-23 기동 이후 미탐지 |
+| ECS 태스크 비정상 종료 없음 | ECS → 서비스 → 이벤트 탭 | RUNNING 유지 | ✅ 2026-07-23 기동 이후 RUNNING 유지 |
+
+> 7/28 운영 전환 전까지 매일 CloudWatch 로그 및 ECS 상태 확인 필요.
 
 ---
 
