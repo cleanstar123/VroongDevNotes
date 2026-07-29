@@ -24,7 +24,7 @@
 ```powershell
 $baseUrl = "http://localhost:8080"
 $headers = @{
-    "X-API-Secret" = "여기에_VROONG_API_SECRET_값_입력"
+    "X-API-Secret" = "local-dev-secret-key-2024"
     "Content-Type"  = "application/json"
 }
 ```
@@ -39,12 +39,12 @@ $headers = @{
 # fromDate ~ toDate 범위 데이터를 배민 API에서 조회 후 IF 테이블 적재
 Invoke-RestMethod `
     -Method GET `
-    -Uri "$baseUrl/api/v1/delivery/rider-delivery-history?fromDate=20260727&toDate=20260727" `
+    -Uri "$baseUrl/api/v1/delivery/rider-delivery-history?fromDate=2026-07-27&toDate=2026-07-27" `
     -Headers $headers | ConvertTo-Json -Depth 10
 ```
 
 - 결과: `rider_delivery_histories_if` 테이블에 `if_date=오늘날짜`, `transfer_yn='N'` 레코드 적재
-- `fromDate` / `toDate` 형식: `yyyyMMdd`
+- `fromDate` / `toDate` 형식: **`YYYY-MM-DD`** (하이픈 필수, `yyyyMMdd` 형식은 400 오류 발생)
 
 ---
 
