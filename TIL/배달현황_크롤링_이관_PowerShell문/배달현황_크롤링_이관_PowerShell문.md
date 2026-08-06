@@ -39,7 +39,7 @@ $headers = @{
 # fromDate ~ toDate 범위 데이터를 배민 API에서 조회 후 IF 테이블 적재
 Invoke-RestMethod `
     -Method GET `
-    -Uri "$baseUrl/api/v1/delivery/rider-delivery-history?fromDate=2026-07-27&toDate=2026-07-27" `
+    -Uri "$baseUrl/api/v1/delivery/rider-delivery-history?fromDate=2026-08-05&toDate=2026-08-05" `
     -Headers $headers | ConvertTo-Json -Depth 10
 ```
 
