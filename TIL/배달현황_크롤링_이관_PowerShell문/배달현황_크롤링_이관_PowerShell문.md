@@ -22,7 +22,7 @@
 ### 공통 변수 설정 (먼저 실행)
 
 ```powershell
-$baseUrl = "http://localhost:8080"
+$baseUrl = "https://back.vrplatformacct.com"
 $headers = @{
     "X-API-Secret" = "local-dev-secret-key-2024"
     "Content-Type"  = "application/json"
