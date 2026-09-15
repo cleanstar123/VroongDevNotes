@@ -209,7 +209,7 @@ Invoke-RestMethod `
 Write-Host "배송 일일 이력 크롤링 시작..."
 $deliveryDailyResult = Invoke-RestMethod `
     -Method GET `
-    -Uri "http://localhost:8080/api/v1/delivery/daily-delivery-status?fromDate=2026-08-31&toDate=2026-08-31" `
+    -Uri "http://localhost:8080/api/v1/delivery/daily-delivery-status?fromDate=2026-09-14&toDate=2026-09-14" `
     -Headers @{ "X-API-SECRET" = "local-dev-secret-key-2024" }
 Write-Host "배송 일일 이력 크롤링 완료:" ($deliveryDailyResult | ConvertTo-Json -Depth 5)
 ```
