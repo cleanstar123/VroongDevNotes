@@ -156,7 +156,7 @@ Invoke-RestMethod `
     -Uri "http://localhost:8080/api/v1/migration/migrate" `
     -ContentType "application/json" `
     -Headers @{ "X-API-SECRET" = "local-dev-secret-key-2024" } `
-    -Body '{"tableName":"rider_delivery_histories_if","targetDate":"20260614"}'
+    -Body '{"tableName":"rider_delivery_histories_if","targetDate":"20260914"}'
 ```
 
 ---
