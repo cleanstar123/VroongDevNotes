@@ -124,32 +124,32 @@ VTIM 처리 판단 근거 (`VtimPendingCheckUseCase`):
 
 ## 2단계: Gap 분석
 
-| 요구사항 | 현재 상태 | 근거 | 신규 개발/수정 필요 내용 | 난이도 |
-|---|---|---|---|---|
-| `POST /api/v1/withdrawals` 신규 엔드포인트 | **없음** | 현재 `/api/v1/mob/withdrl/request`만 존재 | 신규 Controller + UseCase 작성 | 중 |
-| `requestId` 저장 및 멱등성 처리 | **없음** | `vr_withdraw_request_his`에 requestId 컬럼 없음 | 테이블에 `REQUEST_ID VARCHAR UNIQUE` 추가 + 중복 검사 로직 | 중 |
-| `withdrawalId` (부릉 원번호) 저장 | **없음** | 현재 테이블에 외부 withdrawalId 컬럼 없음 | `WITHDRAWAL_ID` 컬럼 추가 + 유니크 인덱스 | 하 |
-| HTTP 202 즉시 반환 (비동기 처리) | **없음** | 현재 헥토 응답까지 동기 대기 | 접수 저장 후 202 반환, 헥토 호출은 별도 처리로 분리 | **상** |
-| 잔액·수수료 차감 없이 송금만 수행 | **없음** | 현재 [6]~[8] 잔액차감이 헥토 호출보다 먼저 실행됨 | 신규 UseCase에서 [6]~[8] 단계를 건너뛰는 분기. 단, DB 흐름 기록용 INSERT는 유지 필요 | **상** |
-| DB에 예치금 흐름 연속 기록 (차감 없이) | **없음** | 현재 잔액 차감과 흐름 기록이 동일 테이블에 묶여 있음 | 부릉 요청용 별도 타입(WD_TYPE='X' 등)으로 INSERT하되 BAL_AMT 미변경 방식 설계 필요 | 중 |
-| `GET /api/v1/withdrawals/{requestId}` | **없음** | 현재 결과 조회 API 없음 | 신규 Controller + requestId 기준 조회 Repository | 하 |
-| 응답: `version`, `final`, `nextPollAfterSeconds` | **없음** | 현재 테이블에 없는 필드 | 컬럼 추가 또는 응답 계산 로직 | 하 |
-| 응답: `maskedAccountNumber` | **부분** | 저장은 암호화됨. 복호화 후 마스킹 처리 필요 | 복호화 후 앞자리 마스킹 변환 로직 추가 | 하 |
-| 상태값 ACCEPTED/PROCESSING/PENDING_CONFIRMATION/SUCCEEDED/FAILED | **부분** | 현재 PENDING/COMPLETED/FAILED/VTIM. 이름·의미 불일치 | 상태 Enum 신규 정의 + 매핑 | 하 |
-| mchtTrdNo 송금 전 DB 저장 | **있음** ✓ | `MobWithdrlUseCase:439~454` REQUIRES_NEW로 저장 | 불필요 | - |
-| VTIM 발생 시 즉시 실패 처리 금지 | **있음** ✓ | `VtimPendingCheckUseCase` — PENDING 유지 후 재조회 최대 10회 | EXPIRED 상태 설명 메일 답장에 포함 필요 | - |
-| ⚠️ EXPIRED(10회 초과) 후 자동 실패 처리 | **위험 지점** | EXPIRED로 상태 변경, 재송금은 없음. 단 FAILED 확정도 아님 → 부릉이 FAILED로 간주 가능성 있음 | EXPIRED 상태를 부릉 API에서 어떻게 노출할지 정책 결정 필요 | 중 |
-| 동일 requestId + 다른 내용 → 오류 반환 | **없음** | requestId 개념 자체 없음 | requestId 저장 후 내용 해시 비교 로직 | 중 |
-| 동일 withdrawalId + 다른 requestId → 중복 송금 차단 | **없음** | withdrawalId 개념 없음 | WITHDRAWAL_ID UNIQUE 제약 + 재요청 시 기존 결과 반환 | 중 |
-| DB 유니크 제약 + 선점 처리 | **부분** | PESSIMISTIC_WRITE 락 있음. 단 requestId/withdrawalId 유니크 제약 없음 | REQUEST_ID, WITHDRAWAL_ID에 UNIQUE 인덱스 추가 | 하 |
-| 서버 재시작 후 미처리 이어 처리 | **있음** ✓ | `vr_withdraw_vtim_pending` + `/api/v1/vtim/process-pending` 배치 | 신규 ACCEPTED/PROCESSING 건도 재시작 후 처리 로직 필요 | 중 |
-| 계좌번호 암호화 저장 | **있음** ✓ | `MobWithdrlUseCase:291~300` AES-GCM | 불필요 | - |
-| 로그 마스킹 | **있음** ✓ | `MobWithdrlUseCase:458~465` `"***"` | 불필요 | - |
-| 서버 간 인증 (부릉 전용 별도 수단) | **부분** | X-API-Secret 있음. 단 부릉 전용 클라이언트 식별 수단 없음 | 부릉 전용 API Key 발급 또는 별도 헤더 인증 추가 | 중 |
-| 인증된 클라이언트가 자기 거래만 조회 | **없음** | 클라이언트 ID와 거래 연결 개념 없음 | 거래 테이블에 `CLIENT_ID` 컬럼 + 조회 시 필터링 | 중 |
-| 오류 코드 표준화 (IDEMPOTENCY_CONFLICT 등) | **없음** | 현재 표준화된 에러 코드 없음 | 표준 에러 응답 DTO + 에러 코드 정의 | 중 |
-| traceId 포함 오류 응답 | **확인 불가** | MDC/traceId 설정 여부 미확인 | 확인 후 추가 | - |
-| 권장 재조회 대기 시간 (`nextPollAfterSeconds`) | **없음** | 없음 | 응답 생성 시 상태별 값 계산 로직 | 하 |
+| 요구사항                                                          | 현재 상태     | 근거                                                               | 신규 개발/수정 필요 내용                                               | 난이도   |
+| ------------------------------------------------------------- | --------- | ---------------------------------------------------------------- | ------------------------------------------------------------ | ----- |
+| `POST /api/v1/withdrawals` 신규 엔드포인트                           | **없음**    | 현재 `/api/v1/mob/withdrl/request`만 존재                             | 신규 Controller + UseCase 작성                                   | 중     |
+| `requestId` 저장 및 멱등성 처리                                       | **없음**    | `vr_withdraw_request_his`에 requestId 컬럼 없음                       | 테이블에 `REQUEST_ID VARCHAR UNIQUE` 추가 + 중복 검사 로직               | 중     |
+| `withdrawalId` (부릉 원번호) 저장                                    | **없음**    | 현재 테이블에 외부 withdrawalId 컬럼 없음                                    | `WITHDRAWAL_ID` 컬럼 추가 + 유니크 인덱스                              | 하     |
+| HTTP 202 즉시 반환 (비동기 처리)                                       | **없음**    | 현재 헥토 응답까지 동기 대기                                                 | 접수 저장 후 202 반환, 헥토 호출은 별도 처리로 분리                             | **상** |
+| 잔액·수수료 차감 없이 송금만 수행                                           | **없음**    | 현재 [6]~[8] 잔액차감이 헥토 호출보다 먼저 실행됨                                  | 신규 UseCase에서 [6]~[8] 단계를 건너뛰는 분기. 단, DB 흐름 기록용 INSERT는 유지 필요 | **상** |
+| DB에 예치금 흐름 연속 기록 (차감 없이)                                      | **없음**    | 현재 잔액 차감과 흐름 기록이 동일 테이블에 묶여 있음                                   | 부릉 요청용 별도 타입(WD_TYPE='X' 등)으로 INSERT하되 BAL_AMT 미변경 방식 설계 필요  | 중     |
+| `GET /api/v1/withdrawals/{requestId}`                         | **없음**    | 현재 결과 조회 API 없음                                                  | 신규 Controller + requestId 기준 조회 Repository                   | 하     |
+| 응답: `version`, `final`, `nextPollAfterSeconds`                | **없음**    | 현재 테이블에 없는 필드                                                    | 컬럼 추가 또는 응답 계산 로직                                            | 하     |
+| 응답: `maskedAccountNumber`                                     | **부분**    | 저장은 암호화됨. 복호화 후 마스킹 처리 필요                                        | 복호화 후 앞자리 마스킹 변환 로직 추가                                       | 하     |
+| 상태값 ACCEPTED/PROCESSING/PENDING_CONFIRMATION/SUCCEEDED/FAILED | **부분**    | 현재 PENDING/COMPLETED/FAILED/VTIM. 이름·의미 불일치                      | 상태 Enum 신규 정의 + 매핑                                           | 하     |
+| mchtTrdNo 송금 전 DB 저장                                          | **있음** ✓  | `MobWithdrlUseCase:439~454` REQUIRES_NEW로 저장                     | 불필요                                                          | -     |
+| VTIM 발생 시 즉시 실패 처리 금지                                         | **있음** ✓  | `VtimPendingCheckUseCase` — PENDING 유지 후 재조회 최대 10회              | EXPIRED 상태 설명 메일 답장에 포함 필요                                   | -     |
+| ⚠️ EXPIRED(10회 초과) 후 자동 실패 처리                                 | **위험 지점** | EXPIRED로 상태 변경, 재송금은 없음. 단 FAILED 확정도 아님 → 부릉이 FAILED로 간주 가능성 있음 | EXPIRED 상태를 부릉 API에서 어떻게 노출할지 정책 결정 필요                       | 중     |
+| 동일 requestId + 다른 내용 → 오류 반환                                  | **없음**    | requestId 개념 자체 없음                                               | requestId 저장 후 내용 해시 비교 로직                                   | 중     |
+| 동일 withdrawalId + 다른 requestId → 중복 송금 차단                     | **없음**    | withdrawalId 개념 없음                                               | WITHDRAWAL_ID UNIQUE 제약 + 재요청 시 기존 결과 반환                     | 중     |
+| DB 유니크 제약 + 선점 처리                                             | **부분**    | PESSIMISTIC_WRITE 락 있음. 단 requestId/withdrawalId 유니크 제약 없음       | REQUEST_ID, WITHDRAWAL_ID에 UNIQUE 인덱스 추가                     | 하     |
+| 서버 재시작 후 미처리 이어 처리                                            | **있음** ✓  | `vr_withdraw_vtim_pending` + `/api/v1/vtim/process-pending` 배치   | 신규 ACCEPTED/PROCESSING 건도 재시작 후 처리 로직 필요                     | 중     |
+| 계좌번호 암호화 저장                                                   | **있음** ✓  | `MobWithdrlUseCase:291~300` AES-GCM                              | 불필요                                                          | -     |
+| 로그 마스킹                                                        | **있음** ✓  | `MobWithdrlUseCase:458~465` `"***"`                              | 불필요                                                          | -     |
+| 서버 간 인증 (부릉 전용 별도 수단)                                         | **부분**    | X-API-Secret 있음. 단 부릉 전용 클라이언트 식별 수단 없음                          | 부릉 전용 API Key 발급 또는 별도 헤더 인증 추가                              | 중     |
+| 인증된 클라이언트가 자기 거래만 조회                                          | **없음**    | 클라이언트 ID와 거래 연결 개념 없음                                            | 거래 테이블에 `CLIENT_ID` 컬럼 + 조회 시 필터링                            | 중     |
+| 오류 코드 표준화 (IDEMPOTENCY_CONFLICT 등)                            | **없음**    | 현재 표준화된 에러 코드 없음                                                 | 표준 에러 응답 DTO + 에러 코드 정의                                      | 중     |
+| traceId 포함 오류 응답                                              | **확인 불가** | MDC/traceId 설정 여부 미확인                                            | 확인 후 추가                                                      | -     |
+| 권장 재조회 대기 시간 (`nextPollAfterSeconds`)                         | **없음**    | 없음                                                               | 응답 생성 시 상태별 값 계산 로직                                          | 하     |
 
 ---
 
