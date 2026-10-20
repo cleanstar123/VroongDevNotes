@@ -7,12 +7,12 @@
 
 ## 테스트 환경 정보
 
-| 항목 | 값 |
-|---|---|
-| X-API-Key | 부릉 측 협의 후 발급값으로 대체 |
-| 헥토 테스트 URL | `https://tbgw.settlebank.co.kr` |
-| 헥토 운영 URL | `https://gw.settlebank.co.kr` |
-| 알림 메일 수신자 | cleanstar1212@gmail.com 외 4명 (`application.yml` 참고) |
+| 항목         | 값                                                   |
+| ---------- | --------------------------------------------------- |
+| X-API-Key  | 부릉 측 협의 후 발급값으로 대체                                  |
+| 헥토 테스트 URL | `https://tbgw.settlebank.co.kr`                     |
+| 헥토 운영 URL  | `https://gw.settlebank.co.kr`                       |
+| 알림 메일 수신자  | cleanstar1212@gmail.com 외 4명 (`application.yml` 참고) |
 
 ---
 
