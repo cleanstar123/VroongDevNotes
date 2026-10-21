@@ -1,18 +1,17 @@
 # 외부 출금 API 테스트케이스
 
 > 대상: `POST /api/v1/withdrawals`, `GET /api/v1/withdrawals/{requestId}`, 배치 결과조회
-> 배포 후 운영/개발 서버에서 순서대로 실행
+> 배포 후 **운영 서버**에서 순서대로 실행 (모든 헥토 호출은 운영 헥토 `https://gw.settlebank.co.kr`로 실제 전송됨)
 
 ---
 
 ## 테스트 환경 정보
 
-| 항목         | 값                                                   |
-| ---------- | --------------------------------------------------- |
-| X-API-Key  | 부릉 측 협의 후 발급값으로 대체                                  |
-| 헥토 테스트 URL | `https://tbgw.settlebank.co.kr`                     |
-| 헥토 운영 URL  | `https://gw.settlebank.co.kr`                       |
-| 알림 메일 수신자  | cleanstar1212@gmail.com 외 4명 (`application.yml` 참고) |
+| 항목        | 값                                                   |
+| --------- | --------------------------------------------------- |
+| X-API-Key | 부릉 측 협의 후 발급값으로 대체                                  |
+| 헥토 URL    | `https://gw.settlebank.co.kr` (운영 전용)               |
+| 알림 메일 수신자 | cleanstar1212@gmail.com 외 4명 (`application.yml` 참고) |
 
 ---
 
@@ -32,8 +31,16 @@ LIMIT 20;
 
 ```sql
 -- 특정 requestId 삭제 (각 TC 재실행 전 필요 시)
+-- ⚠️ 운영 DB 직접 조작 — 테스트 완료 후 반드시 정리
 DELETE FROM vpay_external_withdrawal
-WHERE REQUEST_ID IN ('TEST-REQ-001', 'TEST-REQ-002', 'TEST-REQ-003');
+WHERE REQUEST_ID IN (
+    'TEST-REQ-001', 'TEST-REQ-002', 'TEST-REQ-003',
+    'TEST-REQ-NEW',
+    'E2E-REQ-001',
+    'BATCH-REQ-001',
+    'NOTREDNO-REQ-001',
+    'MAXRETRY-REQ-001'
+);
 ```
 
 ---
@@ -42,6 +49,10 @@ WHERE REQUEST_ID IN ('TEST-REQ-001', 'TEST-REQ-002', 'TEST-REQ-003');
 
 ### 목적
 신규 requestId로 출금 접수 시 202가 반환되고 DB에 ACCEPTED 상태로 저장되는지 확인
+
+> **⚠️ 운영 주의사항**: 이 TC는 202 응답 직후 비동기로 운영 헥토(`https://gw.settlebank.co.kr`)에 실제 송금 요청이 전송됩니다.
+> 아래 요청에서 사용하는 계좌번호 `1234567890`은 존재하지 않는 가상 계좌이므로 헥토에서 거부되어 최종 상태는 **FAILED**가 됩니다.
+> 실제 입금은 발생하지 않지만 운영 헥토에 트래픽이 전송됩니다.
 
 ### Step 1 — API 호출
 
@@ -98,18 +109,34 @@ INFO  [외부출금] 출금 접수 완료: requestId=TEST-REQ-001, withdrawalId=
 INFO  [외부출금] 헥토 송금 시작: requestId=TEST-REQ-001, mchtTrdNo=EW...
 ```
 
+### Step 5 — 비동기 처리 완료 후 최종 상태 확인 (10초 후)
+
+```sql
+SELECT REQUEST_ID, STATUS, IS_FINAL, VERSION, RESULT_CODE, RESULT_MESSAGE, COMPLETED_AT
+FROM vpay_external_withdrawal
+WHERE REQUEST_ID = 'TEST-REQ-001';
+```
+
+```
+GET /api/v1/withdrawals/TEST-REQ-001
+X-API-Key: {{X-API-Key}}
+```
+
 ### 판정 기준
 
 | 항목 | 기대값 |
 |---|---|
-| HTTP 응답 코드 | 202 |
-| `status` | ACCEPTED (이후 비동기로 PROCESSING 전이) |
-| `final` | false |
-| `version` | 1 |
+| HTTP 응답 코드 (202) | 202 |
+| `status` (즉시) | ACCEPTED |
+| `final` (즉시) | false |
+| `version` (즉시) | 1 |
 | `maskedAccountNumber` | `******7890` (뒤 4자리만 노출) |
-| `nextPollAfterSeconds` | 5 |
+| `nextPollAfterSeconds` (즉시) | 5 |
 | `MCHT_TRD_NO` | `EW`로 시작하는 22자리 |
-| `IS_FINAL` | 0 |
+| `IS_FINAL` (즉시) | 0 |
+| `status` (10초 후) | FAILED (가상 계좌 `1234567890` → 운영 헥토 거부) |
+| `IS_FINAL` (10초 후) | 1 |
+| `RESULT_CODE` (10초 후) | 0000 이외 (헥토 거부 코드) |
 
 ---
 
