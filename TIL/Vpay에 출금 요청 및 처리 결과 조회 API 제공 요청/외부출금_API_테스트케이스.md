@@ -668,6 +668,10 @@ WHERE REQUEST_ID = 'E2E-REQ-001';
 -> 확인 완료
 success             : True                                                                       failed_count        : 0                                                                          success_count       : 0                                                                          still_pending_count : 0                                                                          error_count         : 2                                                                                                                                                                           processed           : 2 / DB 결과 : REQUEST_ID    STATUS    IS_FINAL    RETRY_COUNT    LAST_CHECKED_AT    COMPLETED_AT
 E2E-REQ-001    PENDING_CONFIRMATION    0    2    2026-10-22 09:55:16    [NULL]
+
+-> 문제 발생 이후에 다시 대처
+$prodSecretHeaders = @{"X-API-Secret" = "local-dev-secret-key-2024"}                             Invoke-RestMethod -Method POST -Uri "https://back.vrplatformacct.com/api/v1/external/withdrawals/process-pending" -Headers $prodSecretHeaders
+$testBody = '{"mchtId":"test","mchtTrdNo":"test","trdNo":"test","orgTrdDt":"20261022"}'; try { Invoke-RestMethod -Method POST -Uri "http://3.36.153.113:8090/relay/hecto/withdrawal-result" -ContentType "application/json" -Body $testBody } catch { $_.Exception.Response.StatusCode.value__ }
 ```
 
 ### Step 2 — 배치 엔드포인트 직접 호출
