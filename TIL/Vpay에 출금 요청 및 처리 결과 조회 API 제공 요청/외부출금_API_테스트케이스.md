@@ -175,19 +175,24 @@ Content-Type: application/json
 }
 ```
 
+```
+Invoke-RestMethod -Method POST -Uri $url -ContentType "application/json" -Headers $headers -Body $body -> 확인 완료 멱등성 정상 동작
+```
+
 ### Step 2 — DB에서 레코드 중복 생성 여부 확인
 
 ```sql
 SELECT COUNT(*) AS cnt
 FROM vpay_external_withdrawal
 WHERE REQUEST_ID = 'TEST-REQ-001';
--- 기대값: 1 (중복 생성 없음)
+-- 기대값: 1 (중복 생성 없음) -> 확인 완료
 ```
 
 ### 로그 확인
 
 ```
 INFO  [외부출금] 멱등성 요청 - 기존 결과 반환: requestId=TEST-REQ-001, status=...
+-> 확인 완료
 ```
 
 ### 판정 기준
@@ -226,6 +231,10 @@ Content-Type: application/json
 }
 ```
 
+```
+$body03 = '{"requestId":"TEST-REQ-001","withdrawalId":"TEST-WD-001","transferAmount":"99999","currency":"KRW","bankCode":"999","accountNumber":"1234567890","accountMemo":"테스트출금"}'; Invoke-RestMethod -Method POST -Uri $url -ContentType "application/json" -Headers $headers -Body $body03 
+-> 409 충돌 오류 확인
+```
 ### Step 2 — 응답 확인
 
 ```
@@ -237,6 +246,7 @@ HTTP 409 Conflict
   },
   "traceId": "..."
 }
+-> 확인 완료
 ```
 
 ### 판정 기준
