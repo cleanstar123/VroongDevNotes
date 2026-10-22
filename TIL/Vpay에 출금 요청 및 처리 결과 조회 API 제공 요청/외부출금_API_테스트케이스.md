@@ -672,6 +672,8 @@ E2E-REQ-001    PENDING_CONFIRMATION    0    2    2026-10-22 09:55:16    [NULL]
 -> 문제 발생 이후에 다시 대처
 $prodSecretHeaders = @{"X-API-Secret" = "local-dev-secret-key-2024"}                             Invoke-RestMethod -Method POST -Uri "https://back.vrplatformacct.com/api/v1/external/withdrawals/process-pending" -Headers $prodSecretHeaders
 $testBody = '{"mchtId":"test","mchtTrdNo":"test","trdNo":"test","orgTrdDt":"20261022"}'; try { Invoke-RestMethod -Method POST -Uri "http://3.36.153.113:8090/relay/hecto/withdrawal-result" -ContentType "application/json" -Body $testBody } catch { $_.Exception.Response.StatusCode.value__ }
+
+-> ec2에 새로운 크롤링, 재인증, PUPPETEER 제외하고 server.js와 hecto-service.js 따로 만들어서 배포함. 이후에 해결.
 ```
 
 ### Step 2 — 배치 엔드포인트 직접 호출
