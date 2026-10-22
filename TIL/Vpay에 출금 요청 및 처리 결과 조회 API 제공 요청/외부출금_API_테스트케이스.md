@@ -284,6 +284,10 @@ Content-Type: application/json
 }
 ```
 
+```
+$body04 = '{"requestId":"TEST-REQ-NEW","withdrawalId":"TEST-WD-001","transferAmount":"10000","currency":"KRW","bankCode":"999","accountNumber":"1234567890","accountMemo":"테스트출금"}'; try { Invoke-RestMethod -Method POST -Uri $url -ContentType "application/json" -Headers $headers -Body $body04 } catch { $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream()); $reader.ReadToEnd() }
+```
+
 ### Step 2 — 응답 확인
 
 ```
@@ -295,6 +299,9 @@ HTTP 409 Conflict
   },
   "traceId": "..."
 }
+
+-> 확인 완료
+{"traceId":"93c6e102-5825-4e90-acac-6e77f173204e","error":{"code":"WITHDRAWAL_ID_CONFLICT","message":"동일 원출금 신청 번호에 대한 요청이 이미 존재합니다."}}
 ```
 
 ### 판정 기준
@@ -318,6 +325,10 @@ Content-Type: application/json
 { "requestId": "TEST-REQ-005", ... }
 ```
 
+```
+try { Invoke-RestMethod -Method POST -Uri $url -ContentType "application/json" -Body $body } catch { $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream()); $reader.ReadToEnd() }
+```
+
 ### Step 2 — 응답 확인
 
 ```
@@ -329,6 +340,8 @@ HTTP 401 Unauthorized
   },
   "traceId": "..."
 }
+
+-> 확인 완료
 ```
 
 ### 판정 기준
@@ -350,6 +363,12 @@ X-API-Key: wrong-key-value
 Content-Type: application/json
 
 { "requestId": "TEST-REQ-006", ... }
+
+-> 유효하지 않은 API Key입니다. 확인 완료.
+```
+
+```
+$wrongHeaders = @{"X-API-Key" = "wrong-key-value"}; try { Invoke-RestMethod -Method POST -Uri $url -ContentType "application/json" -Headers $wrongHeaders -Body $body } catch { $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream()); $reader.ReadToEnd() }
 ```
 
 ### 판정 기준
@@ -377,6 +396,13 @@ Content-Type: application/json
   "currency": "KRW",
   "accountNumber": "1234567890"
 }
+
+-> 확인완료
+{"success":false,"error":"VALIDATION_FAILED","message":"입력 데이터 유효성 검사에 실패했습니다","details":{"bankCode":"bankCode는 필수입니다."},"timestamp":1792629534.317547400,"path":"uri=/api/v1/withdrawals"}
+```
+
+```
+$body07 = '{"requestId":"TEST-REQ-007","withdrawalId":"TEST-WD-007","transferAmount":"10000","currency":"KRW","accountNumber":"1234567890"}'; try { Invoke-RestMethod -Method POST -Uri $url -ContentType "application/json" -Headers $headers -Body $body07 } catch { $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream()); $reader.ReadToEnd() }
 ```
 
 ### 판정 기준
@@ -384,7 +410,8 @@ Content-Type: application/json
 | 항목 | 기대값 |
 |---|---|
 | HTTP 응답 코드 | 400 |
-| `error.code` | VALIDATION_ERROR |
+| `error` | `VALIDATION_FAILED` |
+| `details` | 누락된 필드명 + 메시지 포함 |
 
 ---
 
@@ -405,6 +432,13 @@ Content-Type: application/json
   "bankCode": "020",
   "accountNumber": "1234567890"
 }
+
+-> 확인완료
+{"success":false,"error":"VALIDATION_FAILED","message":"입력 데이터 유효성 검사에 실패했습니다","details":{"currency":"currency는 KRW만 지원합니다."},"timestamp":1792629679.358267400,"path":"uri=/api/v1/withdrawals"}
+```
+
+```
+$body08 = '{"requestId":"TEST-REQ-008","withdrawalId":"TEST-WD-008","transferAmount":"10000","currency":"USD","bankCode":"020","accountNumber":"1234567890"}'; try { Invoke-RestMethod -Method POST -Uri $url -ContentType "application/json" -Headers $headers -Body $body08 } catch { $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream()); $reader.ReadToEnd() }
 ```
 
 ### 판정 기준
@@ -412,7 +446,8 @@ Content-Type: application/json
 | 항목 | 기대값 |
 |---|---|
 | HTTP 응답 코드 | 400 |
-| `error.code` | VALIDATION_ERROR |
+| `error` | `VALIDATION_FAILED` |
+| `details` | 누락된 필드명 + 메시지 포함 |
 
 ---
 
@@ -423,6 +458,13 @@ Content-Type: application/json
 ```
 GET /api/v1/withdrawals/NONEXISTENT-ID
 X-API-Key: {{X-API-Key}}
+
+-> 확인 완료
+{"traceId":"ee356c82-47ba-4c01-8ddc-0865e835eebd","error":{"code":"NOT_FOUND","message":"요청을 찾을 수 없습니다: NONEXISTENT-ID"}}
+```
+
+```
+try { Invoke-RestMethod -Method GET -Uri "http://localhost:8080/api/v1/withdrawals/NONEXISTENT-ID" -Headers $headers } catch { $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream()); $reader.ReadToEnd() }
 ```
 
 ### 판정 기준
@@ -471,6 +513,20 @@ WHERE REQUEST_ID = 'TEST-REQ-001';
 -- PENDING_CONFIRMATION
 UPDATE vpay_external_withdrawal SET STATUS = 'PENDING_CONFIRMATION', IS_FINAL = 0
 WHERE REQUEST_ID = 'TEST-REQ-001';
+```
+
+```
+ACCEPTED 확인:
+UPDATE vpay_external_withdrawal SET STATUS = 'ACCEPTED', IS_FINAL = 0 WHERE REQUEST_ID = 'TEST-REQ-001';
+Invoke-RestMethod -Method GET -Uri "http://localhost:8080/api/v1/withdrawals/TEST-REQ-001" -Headers $headers
+
+PROCESSING 확인:
+UPDATE vpay_external_withdrawal SET STATUS = 'PROCESSING', IS_FINAL = 0 WHERE REQUEST_ID = 'TEST-REQ-001';
+Invoke-RestMethod -Method GET -Uri "http://localhost:8080/api/v1/withdrawals/TEST-REQ-001" -Headers $headers
+
+SUCCEEDED 확인:
+UPDATE vpay_external_withdrawal SET STATUS = 'SUCCEEDED', IS_FINAL = 1 WHERE REQUEST_ID = 'TEST-REQ-001';
+Invoke-RestMethod -Method GET -Uri "http://localhost:8080/api/v1/withdrawals/TEST-REQ-001" -Headers $headers
 ```
 
 ### 판정 기준
