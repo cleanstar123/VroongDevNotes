@@ -469,7 +469,10 @@ WHERE REQUEST_ID = 'TEST-REQ-001';
 ## TC-11: E2E — 정상 송금 흐름 (ACCEPTED → SUCCEEDED)
 
 ### 목적
-실제 헥토 테스트 환경에서 전체 흐름이 정상 동작하는지 확인
+운영 헥토 환경에서 실제 입금이 가능한 계좌로 전체 흐름이 정상 동작하는지 확인
+
+> **⚠️ 운영 주의사항**: 이 TC는 운영 헥토로 실제 1원이 송금됩니다. 사전에 수령 가능한 실제 계좌번호와 은행코드를 준비하세요.
+> 테스트 완료 후 DB에서 `E2E-REQ-001` 레코드를 삭제하세요.
 
 ### Step 1 — 출금 접수
 
@@ -483,8 +486,8 @@ Content-Type: application/json
   "withdrawalId": "E2E-WD-001",
   "transferAmount": "1",
   "currency": "KRW",
-  "bankCode": "{{테스트계좌 은행코드}}",
-  "accountNumber": "{{테스트계좌번호}}",
+  "bankCode": "{{실제 테스트 계좌 은행코드}}",
+  "accountNumber": "{{실제 테스트 계좌번호}}",
   "accountMemo": "E2E테스트"
 }
 ```
@@ -529,11 +532,22 @@ INFO  [외부출금] 헥토 송금 성공: requestId=E2E-REQ-001, trdNo=...
 ### 목적
 VTIM 발생 시 PENDING_CONFIRMATION 상태가 되고, 배치 호출 후 SUCCEEDED로 전이되는지 확인
 
+> **⚠️ 운영 주의사항**: 직접 INSERT 후 테스트 완료 시 `BATCH-REQ-001` 레코드를 삭제하세요.
+
 ### Step 1 — PENDING_CONFIRMATION 상태 직접 삽입
 
+TC-11에서 실제 VTIM이 발생한 건의 DB 레코드를 직접 상태 조작하여 재활용하거나, 아래 SQL로 신규 삽입한다.
+ACCOUNT_NUMBER는 AES-256-GCM 암호화된 값이어야 하므로 TC-11 실행 후 생성된 실제 레코드에서 복사한다.
+
 ```sql
--- 헥토 테스트에서 실제 VTIM이 발생한 mchtTrdNo/hectoTrdNo를 사용하거나,
--- 실제 거래 이후 DB에서 직접 상태를 조작하여 테스트
+-- TC-11 실행 후 생성된 레코드의 ACCOUNT_NUMBER 암호화값 확인
+SELECT ACCOUNT_NUMBER, MCHT_TRD_NO, HECTO_TRD_NO
+FROM vpay_external_withdrawal
+WHERE REQUEST_ID = 'E2E-REQ-001';
+-- 위 쿼리 결과의 ACCOUNT_NUMBER와 HECTO_TRD_NO를 아래 INSERT에 사용
+```
+
+```sql
 INSERT INTO vpay_external_withdrawal (
     REQUEST_ID, WITHDRAWAL_ID, TRANSFER_ID, STATUS, IS_FINAL, VERSION,
     TRANSFER_AMOUNT, BANK_CODE, ACCOUNT_NUMBER, ACCOUNT_MEMO,
@@ -542,13 +556,12 @@ INSERT INTO vpay_external_withdrawal (
 ) VALUES (
     'BATCH-REQ-001', 'BATCH-WD-001', 'VT00000000000000000001',
     'PENDING_CONFIRMATION', 0, 2,
-    10000, '020', '{{암호화된 계좌번호}}', '배치테스트',
-    'EW20261019120000000001', '{{실제 헥토 trdNo}}', 1,
+    10000, '020', '{{E2E-REQ-001의 ACCOUNT_NUMBER 값}}', '배치테스트',
+    'EW{{YYYYMMDDHHMMSS}}000001', '{{E2E-REQ-001의 HECTO_TRD_NO 값}}', 1,
     NOW(), 'TEST', NOW(), 'TEST'
 );
+-- MCHT_TRD_NO 예시: EW20261021120000000001 (EW + 현재일시 + 순번)
 ```
-
-> 실제 trdNo가 없으면 TC-11에서 VTIM이 발생한 건의 DB 레코드를 재활용한다.
 
 ### Step 2 — 배치 엔드포인트 직접 호출
 
@@ -589,7 +602,11 @@ INFO  외부 출금 SUCCEEDED: requestId=BATCH-REQ-001
 ### 목적
 헥토 호출 전 서버가 중단된 PROCESSING 건은 배치가 스킵하고 retryCount만 올리는지 확인
 
+> **⚠️ 운영 주의사항**: 테스트 완료 후 `NOTREDNO-REQ-001` 레코드를 삭제하세요.
+
 ### Step 1 — PROCESSING + hectoTrdNo=NULL 레코드 삽입
+
+ACCOUNT_NUMBER는 TC-11 레코드에서 복사하거나, TC-12의 Step 1 쿼리 결과에서 가져온다.
 
 ```sql
 INSERT INTO vpay_external_withdrawal (
@@ -599,7 +616,7 @@ INSERT INTO vpay_external_withdrawal (
 ) VALUES (
     'NOTREDNO-REQ-001', 'NOTREDNO-WD-001', 'VT00000000000000000099',
     'PROCESSING', 0, 2,
-    5000, '020', '{{암호화된 계좌번호}}', 'EW20261019120000000099',
+    5000, '020', '{{E2E-REQ-001의 ACCOUNT_NUMBER 값}}', 'EW{{YYYYMMDDHHMMSS}}000099',
     NULL, 0,
     NOW(), 'TEST', NOW(), 'TEST'
 );
@@ -641,7 +658,11 @@ WARN  외부 출금 배치 스킵 (hectoTrdNo 없음): requestId=NOTREDNO-REQ-00
 ### 목적
 retryCount가 10회에 도달했을 때 상태가 PENDING_CONFIRMATION으로 유지되고 알림 메일이 발송되는지 확인
 
+> **⚠️ 운영 주의사항**: 테스트 완료 후 `MAXRETRY-REQ-001` 레코드를 삭제하세요.
+
 ### Step 1 — retryCount=9인 PENDING_CONFIRMATION 레코드 삽입
+
+ACCOUNT_NUMBER는 TC-11 레코드에서 복사. HECTO_TRD_NO는 배치가 운영 헥토 결과조회를 실제 호출하므로, TC-11에서 생성된 실제 헥토 trdNo를 사용한다 (resultStatus=29 → PENDING_CONFIRMATION 유지 시나리오).
 
 ```sql
 INSERT INTO vpay_external_withdrawal (
@@ -651,8 +672,8 @@ INSERT INTO vpay_external_withdrawal (
 ) VALUES (
     'MAXRETRY-REQ-001', 'MAXRETRY-WD-001', 'VT00000000000000000088',
     'PENDING_CONFIRMATION', 0, 2,
-    50000, '020', '{{암호화된 계좌번호}}', 'EW20261019120000000088',
-    '{{헥토 trdNo}}', 9,
+    50000, '020', '{{E2E-REQ-001의 ACCOUNT_NUMBER 값}}', 'EW{{YYYYMMDDHHMMSS}}000088',
+    '{{E2E-REQ-001의 HECTO_TRD_NO 값}}', 9,
     NOW(), 'TEST', NOW(), 'TEST'
 );
 ```
