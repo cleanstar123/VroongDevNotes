@@ -527,6 +527,16 @@ Invoke-RestMethod -Method GET -Uri "http://localhost:8080/api/v1/withdrawals/TES
 SUCCEEDED 확인:
 UPDATE vpay_external_withdrawal SET STATUS = 'SUCCEEDED', IS_FINAL = 1 WHERE REQUEST_ID = 'TEST-REQ-001';
 Invoke-RestMethod -Method GET -Uri "http://localhost:8080/api/v1/withdrawals/TEST-REQ-001" -Headers $headers
+
+FAILED:
+UPDATE vpay_external_withdrawal SET STATUS = 'FAILED', IS_FINAL = 1 WHERE REQUEST_ID = 'TEST-REQ-001';
+Invoke-RestMethod -Method GET -Uri "http://localhost:8080/api/v1/withdrawals/TEST-REQ-001" -Headers $headers
+
+PENDING_CONFIRMATION:
+UPDATE vpay_external_withdrawal SET STATUS = 'PENDING_CONFIRMATION', IS_FINAL = 0 WHERE REQUEST_ID = 'TEST-REQ-001';
+Invoke-RestMethod -Method GET -Uri "http://localhost:8080/api/v1/withdrawals/TEST-REQ-001" -Headers $headers
+
+-> 모두 확인 완료.
 ```
 
 ### 판정 기준
@@ -565,6 +575,12 @@ Content-Type: application/json
   "accountNumber": "{{실제 테스트 계좌번호}}",
   "accountMemo": "E2E테스트"
 }
+```
+
+```
+$body11 = '{"requestId":"E2E-REQ-001","withdrawalId":"E2E-WD-001","transferAmount":"1","currency":"KRW","bankCode":"003","accountNumber":"54801500101021","accountMemo":"E2E테스트"}'; Invoke-RestMethod -Method POST -Uri $url -ContentType "application/json" -Headers $headers -Body $body11
+
+-> 확인완료 (계좌 출금 동작 및 데이터)
 ```
 
 응답 202 확인 후 `requestId` 메모
@@ -636,6 +652,20 @@ INSERT INTO vpay_external_withdrawal (
     NOW(), 'TEST', NOW(), 'TEST'
 );
 -- MCHT_TRD_NO 예시: EW20261021120000000001 (EW + 현재일시 + 순번)
+```
+
+```
+UPDATE vpay_external_withdrawal
+SET STATUS = 'PENDING_CONFIRMATION', IS_FINAL = 0, RETRY_COUNT = 1, COMPLETED_AT = NULL
+WHERE REQUEST_ID = 'E2E-REQ-001';
+
+$secretHeaders = @{"X-API-Secret" = "local-dev-secret-key-2024"}; Invoke-RestMethod -Method POST -Uri "http://localhost:8080/api/v1/external/withdrawals/process-pending" -Headers $secretHeaders
+
+SELECT REQUEST_ID, STATUS, IS_FINAL, RETRY_COUNT, LAST_CHECKED_AT, COMPLETED_AT
+FROM vpay_external_withdrawal
+WHERE REQUEST_ID = 'E2E-REQ-001';
+
+-> 
 ```
 
 ### Step 2 — 배치 엔드포인트 직접 호출
