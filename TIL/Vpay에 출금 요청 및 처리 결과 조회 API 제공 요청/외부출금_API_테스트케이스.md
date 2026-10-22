@@ -72,6 +72,15 @@ Content-Type: application/json
 }
 ```
 
+```
+$url = "http://localhost:8080/api/v1/withdrawals"
+$headers = @{"X-API-Key" = "local-dev-secret-key-2024"}
+$body = '{"requestId":"TEST-REQ-001","withdrawalId":"TEST-WD-001","transferAmount":"1000","currency":"KRW","bankCode":"999","accountNumber":"1234567890","accountMemo":"테스트출금"}'
+Invoke-RestMethod -Method POST -Uri $url -ContentType "application/json" -Headers $headers -Body $body
+
+-> 이상한 BankCode라서 실패해야함. -> 확인 완료
+```
+
 ### Step 2 — 응답 확인
 
 ```
