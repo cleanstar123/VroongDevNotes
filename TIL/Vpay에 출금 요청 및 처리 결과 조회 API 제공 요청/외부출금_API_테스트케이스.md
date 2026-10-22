@@ -735,6 +735,20 @@ INSERT INTO vpay_external_withdrawal (
 );
 ```
 
+```
+-- E2E-REQ-001을 PROCESSING + hecto_trd_no NULL 상태로 초기화                                                                                                                                     UPDATE vpay_external_withdrawal                                                                  SET status = 'PROCESSING',                                                                       
+      is_final = 0,
+      hecto_trd_no = NULL,
+      retry_count = 0,
+      result_code = NULL,
+      result_message = NULL
+WHERE request_id = 'E2E-REQ-001';
+
+Invoke-RestMethod -Method POST -Uri "https://back.vrplatformacct.com/api/v1/external/withdrawals/process-pending" -Headers @{ "X-API-Secret" = "local-dev-secret-key-2024" }
+
+-> 확인 완료
+```
+
 ### Step 2 — 배치 엔드포인트 호출
 
 ```
@@ -791,6 +805,18 @@ INSERT INTO vpay_external_withdrawal (
 );
 ```
 
+```
+UPDATE vpay_external_withdrawal
+SET retry_count = 9
+WHERE request_id = 'E2E-REQ-001';
+
+Invoke-RestMethod -Method POST -Uri "https://back.vrplatformacct.com/api/v1/external/withdrawals/process-pending" -Headers @{ "X-API-Secret" = "local-dev-secret-key-2024" }
+
+SELECT status, retry_count, is_final FROM vpay_external_withdrawal WHERE request_id = 'E2E-REQ-001';
+
+-> 확인 완료 (이메일도 도착.)
+```
+
 ### Step 2 — 배치 엔드포인트 호출 (resultStatus=29로 응답되는 상황 가정)
 
 ```
@@ -840,6 +866,12 @@ GET 응답의 `maskedAccountNumber`가 뒤 4자리만 노출되는지 확인
 ```
 GET /api/v1/withdrawals/TEST-REQ-001
 X-API-Key: {{X-API-Key}}
+```
+
+```
+Invoke-RestMethod -Method GET -Uri "https://back.vrplatformacct.com/api/v1/withdrawals/E2E-REQ-001" -Headers @{ "X-API-Key" = "local-dev-secret-key-2024" }
+
+-> 확인 완료.
 ```
 
 ### 판정 기준
