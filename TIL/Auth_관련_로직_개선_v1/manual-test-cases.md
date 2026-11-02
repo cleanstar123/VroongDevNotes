@@ -45,7 +45,7 @@
 
 **예상 결과**
 
-- [ ] 로그아웃 없이 정상 동작
+- [x] 로그아웃 없이 정상 동작 ✅ 2026-11-03
 - [ ] Network 탭: API 401 → `/api/v1/auth/refresh` 200 → 원래 API 재시도 200
 - [ ] `refreshToken` 값이 A와 다름 (rotation)
 - [ ] 새 refresh 토큰의 `sessionId` = A의 `sessionId`, `exp` = A의 `exp` (연장 없음)
