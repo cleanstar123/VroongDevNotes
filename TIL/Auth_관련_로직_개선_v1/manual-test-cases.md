@@ -161,9 +161,9 @@
 
 **예상 결과**
 
-- [ ] 2번: 200
-- [ ] 3번: 401, 응답 형식이 기존과 동일 (`{"success":false,"error":"...","errorCode":"UNAUTHORIZED"}`)
-- [ ] 로그: `잘못된 토큰 타입: REFRESH (expected: ACCESS)`
+- [x] 2번: 200 ✅ 2026-11-03
+- [x] 3번: 401, 응답 형식이 기존과 동일 (`{"success":false,"error":"...","errorCode":"UNAUTHORIZED"}`) ✅ 2026-11-03
+- [x] 로그: `잘못된 토큰 타입: REFRESH (expected: ACCESS)` ✅ 2026-11-03
 
 ---
 
