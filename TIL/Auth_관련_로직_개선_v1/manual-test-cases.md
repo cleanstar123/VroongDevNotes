@@ -95,12 +95,12 @@
 
 **예상 결과**
 
-- [ ] 4, 5번: 200, 새 Access·Refresh 토큰 발급
-- [ ] 로그: `구 형식의 refresh 토큰 수신 (sessionId 없음, 전환 기간): userId=...` (각 1회)
-- [ ] 새 토큰에 `sessionId` 생겼음, Redis에 같은 sessionId 저장됨
-- [ ] 새 refresh 토큰 `exp` = 구 토큰의 `exp` (그대로 유지)
-- [ ] 5번의 새 Access 토큰에 `suppId` 있음
-- [ ] 6번: 200, 구 토큰 로그 없음 (신규 경로로 처리)
+- [x] 4, 5번: 200, 새 Access·Refresh 토큰 발급 ✅ 2026-11-03
+- [x] 로그: `구 형식의 refresh 토큰 수신 (sessionId 없음, 전환 기간): userId=...` (각 1회) ✅ 2026-11-03
+- [x] 새 토큰에 `sessionId` 생겼음, Redis에 같은 sessionId 저장됨 ✅ 2026-11-03
+- [x] 새 refresh 토큰 `exp` = 구 토큰의 `exp` (그대로 유지) ✅ 2026-11-03
+- [x] 5번의 새 Access 토큰에 `suppId` 있음 ✅ 2026-11-03
+- [x] 6번: 200, 구 토큰 로그 없음 (신규 경로로 처리) ✅ 2026-11-03
 
 ### TC-5. SUPPLIER refresh 후 수수료 수정 (#8, SUPPLIER suppId 유지)
 
@@ -111,9 +111,9 @@
 
 **예상 결과**
 
-- [ ] 3번: 수정 성공 (403·권한 오류 없음)
-- [ ] 4번: `suppId` = userId, `userType=S`, `sessionId` 있음
-- [ ] 추가 확인: refresh 없이 Access 만료 상태에서 바로 수수료 수정을 누르면 어떻게 되는지 기록 (RiderFeeController가 401을 반환해 refresh를 유도하는지)
+- [x] 3번: 수정 성공 (403·권한 오류 없음) ✅ 2026-11-03
+- [x] 4번: `suppId` = userId, `userType=S`, `sessionId` 있음 ✅ 2026-11-03
+- [x] 추가 확인: refresh 없이 Access 만료 상태에서 바로 수수료 수정을 누르면 어떻게 되는지 기록 (RiderFeeController가 401을 반환해 refresh를 유도하는지) ✅ 2026-11-03
 
 ### TC-6. 비활성 계정 refresh 차단
 
@@ -123,9 +123,9 @@
 
 **예상 결과**
 
-- [ ] 401, 토큰 미발급
-- [ ] 로그: `비활성화된 계정으로 refresh 시도: userId=...`
-- [ ] 화면 사용 시 로그인 화면 이동
+- [x] 401, 토큰 미발급 ✅ 2026-11-03
+- [x] 로그: `비활성화된 계정으로 refresh 시도: userId=...` ✅ 2026-11-03
+- [x] 화면 사용 시 로그인 화면 이동 ✅ 2026-11-03
 
 **사후**: `use_yn='Y'` 복원
 
