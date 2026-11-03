@@ -46,12 +46,12 @@
 **예상 결과**
 
 - [x] 로그아웃 없이 정상 동작 ✅ 2026-11-03
-- [ ] Network 탭: API 401 → `/api/v1/auth/refresh` 200 → 원래 API 재시도 200
-- [ ] `refreshToken` 값이 A와 다름 (rotation)
-- [ ] 새 refresh 토큰의 `sessionId` = A의 `sessionId`, `exp` = A의 `exp` (연장 없음)
-- [ ] 새 Access 토큰에 `userName`, `userType=C`, 같은 `sessionId` 포함
-- [ ] 로그: `Access Token 갱신 완료: userId=...`
-- [ ] Redis 세션 TTL이 로그인 시점 기준 약 5분 (1분이 아님)
+- [x] Network 탭: API 401 → `/api/v1/auth/refresh` 200 → 원래 API 재시도 200 ✅ 2026-11-03
+- [x] `refreshToken` 값이 A와 다름 (rotation) ✅ 2026-11-03
+- [x] 새 refresh 토큰의 `sessionId` = A의 `sessionId`, `exp` = A의 `exp` (연장 없음) ✅ 2026-11-03
+- [x] 새 Access 토큰에 `userName`, `userType=C`, 같은 `sessionId` 포함 ✅ 2026-11-03
+- [x] 로그: `Access Token 갱신 완료: userId=...` ✅ 2026-11-03
+- [x] Redis 세션 TTL이 로그인 시점 기준 약 5분 (1분이 아님) ✅ 2026-11-03
 
 ### TC-2. 절대 만료
 
